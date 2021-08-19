@@ -44,71 +44,80 @@ my %solarized256 = (
     'green'   =>  'color64', # green
 );
 
-# mc colors from
-# https://midnight-commander.org/wiki/doc/common/skins
-# mappings to ANSI colors from
-# https://github.com/MidnightCommander/mc/blob/master/lib/tty/color-internal.c
-my %mc2solarizedDark = (
-    '_desc'         => 'solarized dark',
-    'black'         => 'base02',
-    'red'           => 'red',
-    'green'         => 'green',
-    'brown'         => 'yellow',
-    'blue'          => 'blue',
-    'magenta'       => 'magenta',
-    'cyan'          => 'cyan',
-    'lightgray'     => 'base2',
-    'gray'          => 'base03',
-    'brightred'     => 'orange',
-    'brightgreen'   => 'base01',
-    'yellow'        => 'base00',
-    'brightblue'    => 'base0',
-    'brightmagenta' => 'violet',
-    'brightcyan'    => 'base1',
-    'white'         => 'base3',
+# this maps the solarized colors to the ANSI color names used by midnight commander
+# mc colors from: https://midnight-commander.org/wiki/doc/common/skins
+# mappings to ANSI colors from: https://github.com/MidnightCommander/mc/blob/master/lib/tty/color-internal.c
+my %solarized16 = (
+    'base03'  => 'gray', # brblack
+    'base02'  => 'black', # black
+    'base01'  => 'brightgreen', # brgreen
+    'base00'  => 'yellow', # bryellow
+    'base0'   => 'brightblue', # brblue
+    'base1'   => 'brightcyan', # brcyan
+    'base2'   => 'lightgray', # white
+    'base3'   => 'white', # brwhite
+    'yellow'  => 'brown', # yellow
+    'orange'  => 'brightred', # brred
+    'red'     => 'red', # red
+    'magenta' => 'magenta', # magenta
+    'violet'  => 'brightmagenta', # brmagenta
+    'blue'    => 'blue', # blue
+    'cyan'    => 'cyan', # cyan
+    'green'   => 'green', # green
 );
 
-my %mc2solarizedLight = (
+my %solarizedCommon = map { $_ => $_ } qw(red green yellow blue magenta cyan orange violet);
+
+my %solarizedDark = (
+    '_desc'         => 'solarized dark',
+    %solarizedCommon,
+    'bg'       => 'base03',
+    'bgInv'    => 'base3',
+    'bgHi'     => 'base02',
+    'bgHiInv'  => 'base2',
+    'fg'       => 'base0',
+    'fgInv'    => 'base00',
+    'fgEmph'   => 'base1',
+    'fgUnemph' => 'base01',
+);
+
+my %solarizedLight = (
     '_desc'         => 'solarized light',
-    'black'         => 'base2', #
-    'red'           => 'red',
-    'green'         => 'green',
-    'brown'         => 'yellow',
-    'blue'          => 'blue',
-    'magenta'       => 'magenta',
-    'cyan'          => 'cyan',
-    'lightgray'     => 'base02',#
-    'gray'          => 'base3', #
-    'brightred'     => 'orange',
-    'brightgreen'   => 'base1', #
-    'yellow'        => 'base0', #
-    'brightblue'    => 'base00', #
-    'brightmagenta' => 'violet',
-    'brightcyan'    => 'base01', #
-    'white'         => 'base03', #
+    %solarizedCommon,
+    'bg'       => 'base3',
+    'bgInv'    => 'base03',
+    'bgHi'     => 'base2',
+    'bgHiInv'  => 'base02',
+    'fg'       => 'base00',
+    'fgInv'    => 'base0',
+    'fgEmph'   => 'base01',
+    'fgUnemph' => 'base1',
 );
 
 my %variants = (
-    'dark-truecolor' => [ \%solarized16M, \%mc2solarizedDark, 'truecolors = true' ],
-    'dark-256color'  => [ \%solarized256, \%mc2solarizedDark, '256colors = true' ],
-    'light-truecolor' => [ \%solarized16M, \%mc2solarizedLight, 'truecolors = true' ],
-    'light-256color'  => [ \%solarized256, \%mc2solarizedLight, '256colors = true' ],
+    'dark-truecolor'  => [ \%solarized16M, \%solarizedDark,  'truecolors = true' ],
+    'dark-256color'   => [ \%solarized256, \%solarizedDark,  '256colors = true' ],
+    'dark-ansi'       => [ \%solarized16,  \%solarizedDark,  undef ],
+    'light-truecolor' => [ \%solarized16M, \%solarizedLight, 'truecolors = true' ],
+    'light-256color'  => [ \%solarized256, \%solarizedLight, '256colors = true' ],
+    'light-ansi'      => [ \%solarized16,  \%solarizedLight, undef ],
 );
 
-open(my $ANSIH, '<solarized-dark-ansi.ini') or die "could not open solarized-dark-ansi.ini: $!";
-my @ansiSkin = <$ANSIH>;
-close($ANSIH);
+open(my $TEMPLATEH, '<solarized-template.ini') or die "could not open solarized-template.ini: $!";
+my @tmplSkin = <$TEMPLATEH>;
+close($TEMPLATEH);
 
-my $mcBrColorMatch = qr/blue|cyan|green|magenta|red/;
-my $mcColorMatch = qr/(?:bright(?:$mcBrColorMatch)|black|brown|(?:light)?gray|white|yellow|$mcBrColorMatch)/;
+my $mcAccentColorMatch = qr/red|green|yellow|blue|magenta|cyan|orange|violet/;
+my $mcColorMatch = qr/\b(?:$mcAccentColorMatch|bgHiInv|bgHi|bgInv|bg|fgUnemph|fgEmph|fgInv|fg)\b/;
+
 foreach my $variant (keys %variants) {
-    my ($colordefs, $mcmap, $mcColorSetting) = @{$variants{$variant}};
+    my ($colordefs, $themeMap, $mcColorSetting) = @{$variants{$variant}};
 
     open (my $OUTH, ">solarized-$variant.ini") or die "could not open solarized-$variant.ini: $!";
 
     my $section = undef;
 
-    foreach my $line (@ansiSkin) {
+    foreach my $line (@tmplSkin) {
         # pass through comment or whitespace line
         if (($line =~ /^\s*$/) || ($line =~ /^\s*#/)) {
             print $OUTH $line;
@@ -120,7 +129,7 @@ foreach my $variant (keys %variants) {
             $section = $1;
 
             print $OUTH $line;
-            if ($section =~ /skin/i) {
+            if (defined $mcColorSetting && $section =~ /^skin$/i) {
                 print $OUTH "    $mcColorSetting\n";
             }
             next;
@@ -137,18 +146,19 @@ foreach my $variant (keys %variants) {
             my $reverse = $5 // '';
             my $trailingSpace = $6 // '';
 
-            $fgColor = mapColor($fgColor, $colordefs, $mcmap);
+            $fgColor = mapColor($fgColor, $colordefs, $themeMap);
             if ($bgColor ne '') {
-                $bgColor = mapColor($bgColor, $colordefs, $mcmap);
+                $bgColor = mapColor($bgColor, $colordefs, $themeMap);
             }
 
             # reverse makes only sense with ANSI colors, for 256/truecolor we can reverse directly
-            if ($reverse eq ';reverse') {
+            if (defined $mcColorSetting && $reverse eq ';reverse') {
                 ($fgColor, $bgColor) = ($bgColor, $fgColor);
             }
 
             my $replacement = $fgColor;
             $replacement .= ";$bgColor" if $bgColor ne '';
+            $replacement .= $reverse unless defined $mcColorSetting;
 
             my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
             $trailingSpace = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
@@ -166,14 +176,14 @@ foreach my $variant (keys %variants) {
 }
 
 sub mapColor {
-    my ($mccolor, $colordefs, $mcmap) = @_;
+    my ($tmplColor, $colordefs, $themeMap) = @_;
 
-    my $solColor = $mcmap->{$mccolor} // undef;
+    my $solColor = $themeMap->{$tmplColor} // undef;
     if ($solColor) {
-        die unless defined $colordefs->{$solColor};
+        die "Unknown solarized color: $solColor" unless defined $colordefs->{$solColor};
         return $colordefs->{$solColor};
     } else {
-        die "Use of unsupported color $mccolor in scheme $mcmap->{'_desc'}";
+        die "Use of unsupported color $tmplColor in scheme $themeMap->{'_desc'}";
     }
 }
 
