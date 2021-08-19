@@ -106,7 +106,7 @@ foreach my $variant (keys %variants) {
 
         die "Statement without section: $line" unless defined $section;
 
-        if ($line =~ /(=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)(\s*)/) {
+        if ($line =~ /(=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
             my $lineOutPre = "$`$1";
             my $lineOutPost = $';
             my $wholeMatch = $2;
@@ -129,7 +129,7 @@ foreach my $variant (keys %variants) {
             $replacement .= ";$bgColor" if $bgColor ne '';
 
             my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
-            $trailingSpace = ($numSpaces <= 0) ? '' : (' ' x $numSpaces);
+            $trailingSpace = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
 
             print $OUTH "$lineOutPre$replacement$trailingSpace$lineOutPost";
         } else {
