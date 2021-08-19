@@ -68,9 +68,31 @@ my %mc2solarizedDark = (
     'white'         => 'base3',
 );
 
+my %mc2solarizedLight = (
+    '_desc'         => 'solarized light',
+    'black'         => 'base2', #
+    'red'           => 'red',
+    'green'         => 'green',
+    'brown'         => 'yellow',
+    'blue'          => 'blue',
+    'magenta'       => 'magenta',
+    'cyan'          => 'cyan',
+    'lightgray'     => 'base02',#
+    'gray'          => 'base3', #
+    'brightred'     => 'orange',
+    'brightgreen'   => 'base1', #
+    'yellow'        => 'base0', #
+    'brightblue'    => 'base00', #
+    'brightmagenta' => 'violet',
+    'brightcyan'    => 'base01', #
+    'white'         => 'base03', #
+);
+
 my %variants = (
     'dark-truecolor' => [ \%solarized16M, \%mc2solarizedDark, 'truecolors = true' ],
     'dark-256color'  => [ \%solarized256, \%mc2solarizedDark, '256colors = true' ],
+    'light-truecolor' => [ \%solarized16M, \%mc2solarizedLight, 'truecolors = true' ],
+    'light-256color'  => [ \%solarized256, \%mc2solarizedLight, '256colors = true' ],
 );
 
 open(my $ANSIH, '<solarized-dark-ansi.ini') or die "could not open solarized-dark-ansi.ini: $!";
