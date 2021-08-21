@@ -4,6 +4,10 @@ use strict;
 use warnings;
 use utf8;
 
+# Match expression for colors in solarized-template.ini
+my $mcAccentColorMatch = qr/red|green|yellow|blue|magenta|cyan|orange|violet/;
+my $mcColorMatch = qr/\b(?:$mcAccentColorMatch|bgHiInv|bgHi|bgInv|bg|fgUnemph|fgEmph|fgInv|fg)\b/;
+
 # solarized mappings from
 # https://ethanschoonover.com/solarized/
 my %solarized16M = (
@@ -95,84 +99,141 @@ my %solarizedLight = (
 );
 
 my %variants = (
-    'dark-truecolor'  => [ \%solarized16M, \%solarizedDark,  'truecolors = true' ],
-    'dark-256color'   => [ \%solarized256, \%solarizedDark,  '256colors = true' ],
-    'dark-ansi'       => [ \%solarized16,  \%solarizedDark,  undef ],
-    'light-truecolor' => [ \%solarized16M, \%solarizedLight, 'truecolors = true' ],
-    'light-256color'  => [ \%solarized256, \%solarizedLight, '256colors = true' ],
-    'light-ansi'      => [ \%solarized16,  \%solarizedLight, undef ],
+    'dark' => {
+        'themeMap' => \%solarizedDark,
+        'colors' => {
+            'truecolor' => {
+                'colordefs' => \%solarized16M,
+                'mcColorSetting' => 'truecolors = true',
+            },
+            '256color' => {
+                'colordefs' => \%solarized256,
+                'mcColorSetting' => '256colors = true',
+            },
+            'ansi' => {
+                'colordefs' => \%solarized16,
+                'mcColorSetting' => undef,
+            },
+        }
+    },
+
+    'light' => {
+        'themeMap' => \%solarizedLight,
+        'colors' => {
+            'truecolor' => {
+                'colordefs' => \%solarized16M,
+                'mcColorSetting' => 'truecolors = true',
+            },
+            '256color' => {
+                'colordefs' => \%solarized256,
+                'mcColorSetting' => '256colors = true',
+            },
+            'ansi' => {
+                'colordefs' => \%solarized16,
+                'mcColorSetting' => undef,
+            },
+        },
+    }
 );
 
+# Read the template
 open(my $TEMPLATEH, '<solarized-template.ini') or die "could not open solarized-template.ini: $!";
 my @tmplSkin = <$TEMPLATEH>;
 close($TEMPLATEH);
 
-my $mcAccentColorMatch = qr/red|green|yellow|blue|magenta|cyan|orange|violet/;
-my $mcColorMatch = qr/\b(?:$mcAccentColorMatch|bgHiInv|bgHi|bgInv|bg|fgUnemph|fgEmph|fgInv|fg)\b/;
+# Open all output files
+while (my ($variant, $variantdef) = each (%variants)) {
+    while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
+        my $filename = "solarized-${variant}-$colortype.ini";
+        open(my $fh, ">", $filename) or die "could not open $filename: $!";
+        $colordef->{'fh'} = $fh;
+    }
+}
 
-foreach my $variant (keys %variants) {
-    my ($colordefs, $themeMap, $mcColorSetting) = @{$variants{$variant}};
-
-    open (my $OUTH, ">solarized-$variant.ini") or die "could not open solarized-$variant.ini: $!";
-
-    my $section = undef;
-
-    foreach my $line (@tmplSkin) {
-        # pass through comment or whitespace line
-        if (($line =~ /^\s*$/) || ($line =~ /^\s*#/)) {
-            print $OUTH $line;
-            next;
-        }
-
-        # start of section
-        if ($line =~ /^\s*\[(\S+)\]\s*$/i) {
-            $section = $1;
-
-            print $OUTH $line;
-            if (defined $mcColorSetting && $section =~ /^skin$/i) {
-                print $OUTH "    $mcColorSetting\n";
-            }
-            next;
-        }
-
-        die "Statement without section: $line" unless defined $section;
-
-        if ($line =~ /(=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
-            my $lineOutPre = "$`$1";
-            my $lineOutPost = $';
-            my $wholeMatch = $2;
-            my $fgColor = $3;
-            my $bgColor = $4 // '';
-            my $reverse = $5 // '';
-            my $trailingSpace = $6 // '';
-
-            $fgColor = mapColor($fgColor, $colordefs, $themeMap);
-            if ($bgColor ne '') {
-                $bgColor = mapColor($bgColor, $colordefs, $themeMap);
-            }
-
-            # reverse makes only sense with ANSI colors, for 256/truecolor we can reverse directly
-            if (defined $mcColorSetting && $reverse eq ';reverse') {
-                ($fgColor, $bgColor) = ($bgColor, $fgColor);
-            }
-
-            my $replacement = $fgColor;
-            $replacement .= ";$bgColor" if $bgColor ne '';
-            $replacement .= $reverse unless defined $mcColorSetting;
-
-            my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
-            $trailingSpace = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
-
-            print $OUTH "$lineOutPre$replacement$trailingSpace$lineOutPost";
-        } else {
-            if ($section !~ /^(?:lines|widget-|skin)/i) { # ignore sections that contain no color definitions
-                print STDERR "No match [$section]: $line";
-            }
-            print $OUTH $line;
-        }
+my $section = undef;
+foreach my $line (@tmplSkin) {
+    # pass through comment or whitespace line
+    if (($line =~ /^\s*$/) || ($line =~ /^\s*#/)) {
+        printOutLines(\%variants, $line);
+        next;
     }
 
-    close ($OUTH);
+    # start of section
+    if ($line =~ /^\s*\[(\S+)\]\s*$/i) {
+        $section = $1;
+
+        printOutLines(\%variants, $line);
+        if ($section =~ /^skin$/i) {
+            while (my ($variant, $variantdef) = each (%variants)) {
+                while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
+                    if (defined $colordef->{'mcColorSetting'}) {
+                        print {$colordef->{'fh'}} "    $colordef->{'mcColorSetting'}\n";
+                    }
+                }
+            }
+        }
+        next;
+    }
+
+    die "Statement without section: $line" unless defined $section;
+
+    if ($line =~ /(=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
+        my $lineOutPre = "$`$1";
+        my $lineOutPost = $';
+        my $wholeMatch = $2;
+        my $fgColorSem = $3;
+        my $bgColorSem = $4 // '';
+        my $reverse = $5 // '';
+        my $trailingSpace = $6 // '';
+
+        while (my ($variant, $variantdef) = each (%variants)) {
+            my $themeMap = $variantdef->{'themeMap'};
+
+            while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
+                my $fgColor = mapColor($fgColorSem, $colordef->{'colordefs'}, $themeMap);
+                my $bgColor = ($bgColorSem eq '') ? '' : mapColor($bgColorSem, $colordef->{'colordefs'}, $themeMap);
+
+                # reverse makes only sense with ANSI colors, for 256/truecolor we can reverse directly
+                if (defined $colordef->{'mcColorSetting'} && $reverse eq ';reverse') {
+                    ($fgColor, $bgColor) = ($bgColor, $fgColor);
+                }
+
+                my $replacement = $fgColor;
+                $replacement .= ";$bgColor" if $bgColor ne '';
+                $replacement .= $reverse unless defined $colordef->{'mcColorSetting'};
+
+                my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
+                my $trailingSpaceNew = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
+
+                print {$colordef->{'fh'}} "$lineOutPre$replacement$trailingSpaceNew$lineOutPost";
+            }
+        }
+    } else {
+        if ($section !~ /^(?:lines|widget-|skin)/i) { # ignore sections that contain no color definitions
+            print STDERR "No match [$section]: $line";
+        }
+        printOutLines(\%variants, $line);
+    }
+}
+
+# Close all output files
+while (my ($variant, $variantdef) = each (%variants)) {
+    while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
+        close($colordef->{'fh'});
+    }
+}
+
+exit 0;
+
+sub printOutLines {
+    my $variants = shift;
+    my @fhs = map { map { $_->{'fh'} } values %{$_->{'colors'}} } values %$variants;
+
+    foreach my $line (@_) {
+        foreach my $fh (@fhs) {
+            print $fh $line;
+        }
+    }
 }
 
 sub mapColor {
