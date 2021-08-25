@@ -27,6 +27,19 @@ my %solarized16M = (
     'blue'    => '#268bd2', # blue
     'cyan'    => '#2aa198', # cyan
     'green'   => '#859900', # green
+
+    '_printFn' => sub {
+        my ($text, $fgColor, $bgColor, $reverse) = @_;
+
+        $fgColor =~ /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i or die "no valid RGB color $fgColor";
+        printf "\e[38;2;%d;%d;%dm", hex($1), hex($2), hex($3);
+        if ($bgColor ne '') {
+            $bgColor =~ /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i or die "no valid RGB color $bgColor";
+            printf "\e[48;2;%d;%d;%dm", hex($1), hex($2), hex($3);
+        }
+
+        printf "%20.20s\e[0m", $text;
+    },
 );
 
 my %solarized256 = (
@@ -46,6 +59,19 @@ my %solarized256 = (
     'blue'    =>  'color33', # blue
     'cyan'    =>  'color37', # cyan
     'green'   =>  'color64', # green
+
+    '_printFn' => sub {
+        my ($text, $fgColor, $bgColor, $reverse) = @_;
+
+        $fgColor =~ /^color(\d+)$/i or die "no valid 256-palette color $fgColor";
+        printf "\e[38;5;%dm", $1;
+        if ($bgColor ne '') {
+            $bgColor =~ /^color(\d+)$/i or die "no valid 256-palette color $bgColor";
+            printf "\e[48;5;%dm", $1;
+        }
+
+        printf "%20.20s\e[0m", $text;
+    },
 );
 
 # this maps the solarized colors to the ANSI color names used by midnight commander
@@ -68,6 +94,54 @@ my %solarized16 = (
     'blue'    => 'blue', # blue
     'cyan'    => 'cyan', # cyan
     'green'   => 'green', # green
+
+    '_printFn' => sub {
+        my ($text, $fgColor, $bgColor, $reverse) = @_;
+        my %colornum = (
+            'black'         =>  0,
+            'red'           =>  1,
+            'green'         =>  2,
+            'brown'         =>  3,
+            'blue'          =>  4,
+            'magenta'       =>  5,
+            'cyan'          =>  6,
+            'lightgray'     =>  7,
+            'gray'          =>  8,
+            'brightred'     =>  9,
+            'brightgreen'   => 10,
+            'yellow'        => 11,
+            'brightblue'    => 12,
+            'brightmagenta' => 13,
+            'brightcyan'    => 14,
+            'white'         => 15,
+        );
+
+        die "no valid ansi color $fgColor" unless defined $colornum{$fgColor};
+        $fgColor = $colornum{$fgColor};
+        if ($bgColor ne '') {
+            die "no valid ansi color $bgColor" unless defined $colornum{$bgColor};
+            $bgColor = $colornum{$bgColor};
+        }
+        $reverse = $reverse ? '7;' : '';
+
+        # using bold attribute for bright colors
+        printf "\e[%s%s%dm", $reverse, ($fgColor > 7 ? '1;' : ''), ($fgColor > 7 ? (30+$fgColor-8) : (30+$fgColor));
+        my $colorErr = '';
+        if ($bgColor ne '') {
+            printf "\e[%dm", ($bgColor > 7 ? (40+$bgColor-8) : (40+$bgColor));
+            if ($bgColor > 7) {
+                $colorErr = $fgColor > 7 ? '!' : '~';
+            }
+        }
+        printf "%10.10s\e[0m", $colorErr.$text;
+
+        # using 16-color aixterm codes
+        printf "\e[%s%dm", $reverse, ($fgColor > 7 ? (90+$fgColor-8) : (30+$fgColor));
+        if ($bgColor ne '') {
+            printf "\e[%dm", ($bgColor > 7 ? (100+$bgColor-8) : (40+$bgColor));
+        }
+        printf "%10.10s\e[0m", $text;
+    },
 );
 
 my %solarizedCommon = map { $_ => $_ } qw(red green yellow blue magenta cyan orange violet);
@@ -151,6 +225,7 @@ while (my ($variant, $variantdef) = each (%variants)) {
 }
 
 my $section = undef;
+my %printToTerm = ();
 foreach my $line (@tmplSkin) {
     # pass through comment or whitespace line
     if (($line =~ /^\s*$/) || ($line =~ /^\s*#/)) {
@@ -177,14 +252,15 @@ foreach my $line (@tmplSkin) {
 
     die "Statement without section: $line" unless defined $section;
 
-    if ($line =~ /(=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
-        my $lineOutPre = "$`$1";
+    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
+        my $lineOutPre = "$`$1$2";
         my $lineOutPost = $';
-        my $wholeMatch = $2;
-        my $fgColorSem = $3;
-        my $bgColorSem = $4 // '';
-        my $reverse = $5 // '';
-        my $trailingSpace = $6 // '';
+        my $mcSetting = $1;
+        my $wholeMatch = $3;
+        my $fgColorSem = $4;
+        my $bgColorSem = $5 // '';
+        my $reverse = $6 // '';
+        my $trailingSpace = $7 // '';
 
         while (my ($variant, $variantdef) = each (%variants)) {
             my $themeMap = $variantdef->{'themeMap'};
@@ -206,6 +282,9 @@ foreach my $line (@tmplSkin) {
                 my $trailingSpaceNew = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
 
                 print {$colordef->{'fh'}} "$lineOutPre$replacement$trailingSpaceNew$lineOutPost";
+
+                my $colorCombo = "$fgColorSem;$bgColorSem;$reverse";
+                $printToTerm{$variant}{$colorCombo}{$colortype} = [ $fgColor, $bgColor, $reverse, $mcSetting ];
             }
         }
     } else {
@@ -220,6 +299,23 @@ foreach my $line (@tmplSkin) {
 while (my ($variant, $variantdef) = each (%variants)) {
     while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
         close($colordef->{'fh'});
+    }
+}
+
+# print color samples to terminal
+my @colorTypes = qw(ansi truecolor 256color);
+foreach my $variant (sort keys %printToTerm) {
+    print "=======================================================================\n";
+    print "                                $variant\n";
+    print "=======================================================================\n";
+    printf "%10.10s%10.10s%20.20s%20.20s\n", "8 colors", "16 colors", "truecolor", "256 colors" ;
+    foreach my $colorCombo (sort keys %{$printToTerm{$variant}}) {
+        foreach my $colortype (@colorTypes) {
+            my $printFn = $variants{$variant}{'colors'}{$colortype}{'colordefs'}{'_printFn'};
+            my ($fg, $bg, $rev, $mcSetting) = @{$printToTerm{$variant}{$colorCombo}{$colortype}};
+            $printFn->($mcSetting, $fg, $bg, $rev);
+        }
+        print "\n";
     }
 }
 
