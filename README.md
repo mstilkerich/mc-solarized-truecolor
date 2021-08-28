@@ -13,9 +13,9 @@ color variant is just an approximation as the color palette does not contain the
 
 ## Color use
 
-- Color highlights as in the solarized dark theme from [vivid](https://github.com/sharkdp/vivid), which in turn stays
+- Filetype highlights as in the solarized dark theme from [vivid](https://github.com/sharkdp/vivid), which in turn stays
   close to the original dircolors. A noteable exception is that I decided not to use different background colors.
-  Instead, I use underline font style (if supported by terminal).
+  Instead of background highlights, I use underline font style (if supported by terminal).
 
 ## Credits
 
