@@ -7,6 +7,10 @@ use utf8;
 # Match expression for colors in solarized-template.ini
 my $mcAccentColorMatch = qr/red|green|yellow|blue|magenta|cyan|orange|violet/;
 my $mcColorMatch = qr/\b(?:$mcAccentColorMatch|bgHiInv|bgHi|bgInv|bg|fgUnemph|fgEmph|fgInv|fg)\b/;
+# Match expression for ini-sections that only contain color definitions
+# Die if our color match expression does not match a line in these sections
+my $mcColorSectMatch =
+    qr/^(core|popupmenu|dialog|diffviewer|error|filehighlight|menu|statusbar|help|buttonbar|editor|viewer)$/;
 
 # solarized mappings from
 # https://ethanschoonover.com/solarized/
@@ -252,7 +256,7 @@ foreach my $line (@tmplSkin) {
 
     die "Statement without section: $line" unless defined $section;
 
-    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch)(;reverse)?)?)( *)/) {
+    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch);?(reverse(?:\+(\S+))?)?)?)( *)/) {
         my $lineOutPre = "$`$1$2";
         my $lineOutPost = $';
         my $mcSetting = $1;
@@ -260,7 +264,8 @@ foreach my $line (@tmplSkin) {
         my $fgColorSem = $4;
         my $bgColorSem = $5 // '';
         my $reverse = $6 // '';
-        my $trailingSpace = $7 // '';
+        my $otherattr = $7 // '';
+        my $trailingSpace = $8 // '';
 
         while (my ($variant, $variantdef) = each (%variants)) {
             my $themeMap = $variantdef->{'themeMap'};
@@ -270,13 +275,14 @@ foreach my $line (@tmplSkin) {
                 my $bgColor = ($bgColorSem eq '') ? '' : mapColor($bgColorSem, $colordef->{'colordefs'}, $themeMap);
 
                 # reverse makes only sense with ANSI colors, for 256/truecolor we can reverse directly
-                if (defined $colordef->{'mcColorSetting'} && $reverse eq ';reverse') {
+                if (defined $colordef->{'mcColorSetting'} && $reverse) {
                     ($fgColor, $bgColor) = ($bgColor, $fgColor);
                 }
 
-                my $replacement = $fgColor;
-                $replacement .= ";$bgColor" if $bgColor ne '';
+                my $replacement = "$fgColor;";
+                $replacement .= "$bgColor;";
                 $replacement .= $reverse unless defined $colordef->{'mcColorSetting'};
+                $replacement .= $otherattr;
 
                 my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
                 my $trailingSpaceNew = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
@@ -288,9 +294,7 @@ foreach my $line (@tmplSkin) {
             }
         }
     } else {
-        if ($section !~ /^(?:lines|widget-|skin)/i) { # ignore sections that contain no color definitions
-            print STDERR "No match [$section]: $line";
-        }
+        die "No match [$section]: $line" if $section =~ /$mcColorSectMatch/;
         printOutLines(\%variants, $line);
     }
 }
