@@ -19,6 +19,14 @@ color variant is just an approximation as the color palette does not contain the
   close to the original dircolors. A noteable exception is that I decided not to use different background colors.
   Instead of background highlights, I use underline font style (if supported by terminal).
 
+## Screenshots
+
+### Solarized dark (truecolor)
+![Dark Variant (Truecolor)](screenshots/dark-truecolor.png)
+
+### Solarized light (truecolor)
+![Light Variant (Truecolor)](screenshots/light-truecolor.png)
+
 ## Credits
 
 - Ethan Schoonover, creator of [solarized color schemes](https://ethanschoonover.com/solarized/)
