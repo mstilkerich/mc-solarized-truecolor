@@ -246,7 +246,7 @@ foreach my $line (@tmplSkin) {
             while (my ($variant, $variantdef) = each (%variants)) {
                 while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
                     if (defined $colordef->{'mcColorSetting'}) {
-                        print {$colordef->{'fh'}} "    $colordef->{'mcColorSetting'}\n";
+                        print {$colordef->{'fh'}} "$colordef->{'mcColorSetting'}\n";
                     }
                 }
             }
@@ -256,7 +256,7 @@ foreach my $line (@tmplSkin) {
 
     die "Statement without section: $line" unless defined $section;
 
-    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch);?(reverse(?:\+(\S+))?)?)?)( *)/) {
+    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch);?(reverse(?:\+(\S+))?)?)?)/) {
         my $lineOutPre = "$`$1$2";
         my $lineOutPost = $';
         my $mcSetting = $1;
@@ -265,7 +265,6 @@ foreach my $line (@tmplSkin) {
         my $bgColorSem = $5 // '';
         my $reverse = $6 // '';
         my $otherattr = $7 // '';
-        my $trailingSpace = $8 // '';
 
         while (my ($variant, $variantdef) = each (%variants)) {
             my $themeMap = $variantdef->{'themeMap'};
@@ -284,10 +283,7 @@ foreach my $line (@tmplSkin) {
                 $replacement .= $reverse unless defined $colordef->{'mcColorSetting'};
                 $replacement .= $otherattr;
 
-                my $numSpaces = length($wholeMatch) - length($replacement) + length($trailingSpace);
-                my $trailingSpaceNew = ($numSpaces <= 0 || length($trailingSpace) == 0) ? '' : (' ' x $numSpaces);
-
-                print {$colordef->{'fh'}} "$lineOutPre$replacement$trailingSpaceNew$lineOutPost";
+                print {$colordef->{'fh'}} "$lineOutPre$replacement$lineOutPost";
 
                 my $colorCombo = "$fgColorSem;$bgColorSem;$reverse";
                 $printToTerm{$variant}{$colorCombo}{$colortype} = [ $fgColor, $bgColor, $reverse, $mcSetting ];
