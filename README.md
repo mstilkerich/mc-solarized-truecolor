@@ -21,6 +21,8 @@ color variant is just an approximation as the color palette does not contain the
 
 ## Screenshots
 
+More screenshots are available in the subfolder [screenshots](screenshots/README.md).
+
 ### Solarized dark (truecolor)
 ![Dark Variant (Truecolor)](screenshots/dark-truecolor.png)
 
