@@ -2,7 +2,9 @@
 
 This skin is based on denius/mc-solarized-skin, which uses ANSI colors and requires a customized ANSI color palette in
 the terminal configuration. Note that while I used that Skin as a basis, I have adapted the colors so it is not meant to
-look the same.
+look the same. For example, the original skin uses light colors for menus in the dark skin variant. I changed it to use
+dark colors in the dark skin, light colors in the light skin. I tend to use the dark skin in dim-lit rooms, and in such
+cases find it irritating to have larger areas of bright color.
 
 Nowadays, pretty much all terminal emulators support 256-color modes, and even truecolor (16 million colors) is getting
 commonly available.
