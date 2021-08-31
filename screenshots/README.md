@@ -28,7 +28,8 @@ customize the syntax highlighting is that some of the colors are barely readable
 skin. You can see this in the below screenshots in the light variant for the window that shows README.md. The markdown
 syntax highlighting uses "lightgray" as the text color, which is ANSI color "white". In solarized light, this color is
 used for the emphasized background. Used as foreground color on the standard solarized light background, it is barely
-readable.
+readable. There is a longstanding related [issue](https://midnight-commander.org/ticket/2172) concluding that light 
+background skins are problematic with the current syntax highlighting. 
 
 In the dark variant, the colors seem to work better but there may be problems with some filetypes as well that I did not
 encounter yet.
