@@ -28,8 +28,8 @@ customize the syntax highlighting is that some of the colors are barely readable
 skin. You can see this in the below screenshots in the light variant for the window that shows README.md. The markdown
 syntax highlighting uses "lightgray" as the text color, which is ANSI color "white". In solarized light, this color is
 used for the emphasized background. Used as foreground color on the standard solarized light background, it is barely
-readable. There is a longstanding related [issue](https://midnight-commander.org/ticket/2172) concluding that light 
-background skins are problematic with the current syntax highlighting. 
+readable. There is a longstanding related [issue](https://midnight-commander.org/ticket/2172) concluding that light
+background skins are problematic with the current syntax highlighting.
 
 In the dark variant, the colors seem to work better but there may be problems with some filetypes as well that I did not
 encounter yet.
@@ -38,6 +38,12 @@ encounter yet.
 ![Internal Editor - Dark Variant (Truecolor)](dark-truecolor-editor.png)
 ## Solarized light (truecolor)
 ![Internal Editor - Light Variant (Truecolor)](light-truecolor-editor.png)
+
+# Internal Diff
+## Solarized dark (truecolor)
+![Internal Diff - Dark Variant (Truecolor)](dark-truecolor-diff.png)
+## Solarized light (truecolor)
+![Internal Diff - Light Variant (Truecolor)](light-truecolor-diff.png)
 
 # History Dialog
 Highlighted entries of the history dialog unfortunately use the color of focused hotkeys. This does fit the theme, but
