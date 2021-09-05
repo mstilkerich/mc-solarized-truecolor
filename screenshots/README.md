@@ -35,9 +35,16 @@ In the dark variant, the colors seem to work better but there may be problems wi
 encounter yet.
 
 ## Solarized dark (truecolor)
+### With standard syntax highlighting file
 ![Internal Editor - Dark Variant (Truecolor)](dark-truecolor-editor.png)
+### With adapted syntax highlights shipped with this skin
+![Internal Editor (Adapted Syntax) - Dark Variant (Truecolor)](dark-truecolor-editor-customsyntax.png)
+
 ## Solarized light (truecolor)
+### With standard syntax highlighting file
 ![Internal Editor - Light Variant (Truecolor)](light-truecolor-editor.png)
+### With adapted syntax highlights shipped with this skin
+![Internal Editor (Adapted Syntax) - Light Variant (Truecolor)](light-truecolor-editor-customsyntax.png)
 
 # Internal Diff
 ## Solarized dark (truecolor)
