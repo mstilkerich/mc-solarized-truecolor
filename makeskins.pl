@@ -6,6 +6,7 @@ use utf8;
 
 use Getopt::Long;
 use File::Spec;
+use File::Path 'make_path';
 
 # Match expression for colors in solarized-template.ini
 my $mcAccentColorMatch = qr/red|green|yellow|blue|magenta|cyan|orange|violet/;
@@ -268,11 +269,16 @@ my %synMapBg = (
 my $syntaxFile;
 my $printColors;
 my $contrastLimit;
+my $version;
 GetOptions(
     "syntaxfile=s" => \$syntaxFile,
     "contrastlimit=f" => \$contrastLimit,
     "printcolors" => \$printColors,
+    "version=s" => \$version,
 ) or die("Error in command line arguments\n");
+
+$version //= `git rev-parse HEAD`;
+chomp $version;
 
 # Read the template
 open(my $TEMPLATEH, '<solarized-template.ini') or die "could not open solarized-template.ini: $!";
@@ -280,7 +286,8 @@ my @tmplSkin = <$TEMPLATEH>;
 close($TEMPLATEH);
 
 # Open all output files
-openOutFiles('solarized-');
+-d 'build/skins' or make_path('build/skins') or die 'could not create directory build/skins';
+openOutFiles('build/skins/solarized-');
 
 my $section = undef;
 my %printToTerm = ();
@@ -347,6 +354,8 @@ foreach my $line (@tmplSkin) {
                 $printToTerm{$variant}{$colorCombo}{$colortype} = [ $fgColor, $bgColor, $reverse, $mcSetting ];
             }
         }
+    } elsif ($section eq 'skin' && $line =~ /^\s*description\s*=/)  {
+        printInfoLine(\%variants, $line);
     } else {
         die "No match [$section]: $line" if $section =~ /$mcColorSectMatch/;
         printOutLines(\%variants, $line);
@@ -414,9 +423,17 @@ sub mapSyntaxFiles {
 
     $synBaseDir = '.' unless $synBaseDir ne '';
 
-    -d 'syntax' or mkdir('syntax') or die 'could not create directory syntax: $!';
+    -d 'build/syntax' or mkdir('build/syntax') or die 'could not create directory build/syntax: $!';
     # open out files
-    openOutFiles('syntax/');
+    openOutFiles('build/syntax/');
+
+    # print Info Line
+    printInfoLine(
+        \%variants,
+        "# Adapted syntax definitions for solarized \$VARIANT skin (\$COLORTYPE, Version \$VERSION)\n",
+        "# See https://github.com/mstilkerich/mc-solarized-truecolor\n",
+        "\n",
+    );
 
     # process lines
     my @context; # ( foreground, background ) of current context, undefined outside context
@@ -553,6 +570,26 @@ sub printOutLines {
     foreach my $line (@_) {
         foreach my $fh (@fhs) {
             print $fh $line;
+        }
+    }
+}
+
+# Prints an info line to all open variant ini files; openOutFiles() must be called first
+# In the info line, the placeholders $VERSION, $VARIANT and $COLORTYPE are replaced
+sub printInfoLine {
+    my $variants = shift;
+
+    while (my ($variant, $variantdef) = each (%variants)) {
+        while (my ($colortype, $colordef) = each (%{$variantdef->{'colors'}})) {
+            foreach my $line (@_) {
+                my $l = $line;
+                $l =~ s/\$VERSION/$version/g;
+                $l =~ s/\$VARIANT/$variant/g;
+                $l =~ s/\$COLORTYPE/$colortype/g;
+
+                my $fh = $colordef->{'fh'};
+                print $fh $l;
+            }
         }
     }
 }

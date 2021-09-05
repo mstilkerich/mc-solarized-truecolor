@@ -1,2 +1,4 @@
 testdir/
+build/
+releases/
 .DS_Store
