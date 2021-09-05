@@ -475,13 +475,6 @@ sub mapSyntaxFiles {
             $fgColorSem = reverseMapColor($fgColorSem, \%synMapFg);
             $bgColorSem = reverseMapColor($bgColorSem, \%synMapBg);
 
-            if ($fgColorSem eq 'bg' && $bgColorSem eq 'bg') {
-                use Data::Dumper;
-                print "LINE: $line";
-                print "Context: @context\n";
-                print "FG/BG: $fg / $bg\n";
-            }
-
             while (my ($variant, $variantdef) = each (%variants)) {
                 my $themeMap = $variantdef->{'themeMap'};
 
