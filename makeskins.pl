@@ -317,15 +317,17 @@ foreach my $line (@tmplSkin) {
 
     die "Statement without section: $line" unless defined $section;
 
-    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch);?(reverse(?:\+(\S+))?)?)?)/) {
+    if ($line =~ /(\S+)(\s*=\s*)(($mcColorMatch)(?:;($mcColorMatch)(?:;(\S+))?)?)/) {
         my $lineOutPre = "$`$1$2";
         my $lineOutPost = $';
         my $mcSetting = $1;
         my $wholeMatch = $3;
         my $fgColorSem = $4;
         my $bgColorSem = $5 // '';
-        my $reverse = $6 // '';
-        my $otherattr = $7 // '';
+        # Raw third field: may be a plain attribute list ("bold"), "reverse" on its own, or "reverse+<attrs>".
+        my $attrRaw = $6 // '';
+        my $isReverse = ($attrRaw =~ /^reverse\b/);
+        (my $otherattr = $attrRaw) =~ s/^reverse\+?//;
 
         while (my ($variant, $variantdef) = each (%variants)) {
             my $themeMap = $variantdef->{'themeMap'};
@@ -335,23 +337,24 @@ foreach my $line (@tmplSkin) {
                 my $bgColor = ($bgColorSem eq '') ? '' : mapColor($bgColorSem, $colordef->{'colordefs'}, $themeMap);
 
                 # reverse makes only sense with ANSI colors, for 256/truecolor we can reverse directly
-                if (defined $colordef->{'mcColorSetting'} && $reverse) {
+                if (defined $colordef->{'mcColorSetting'} && $isReverse) {
                     ($fgColor, $bgColor) = ($bgColor, $fgColor);
                 }
 
-                my $replacement = "$fgColor;";
-                $replacement .= "$bgColor;";
-                $replacement .= $reverse unless defined $colordef->{'mcColorSetting'};
-                $replacement .= $otherattr;
+                # For ansi, "reverse" (e.g. "reverse+bold") is itself the full attribute string; for 256color/
+                # truecolor, reverse is instead applied by swapping fg/bg above, so only $otherattr (e.g. "bold")
+                # remains as an attribute.
+                my $attrs = defined ($colordef->{'mcColorSetting'}) ? $otherattr : $attrRaw;
+                my $replacement = joinSpecFields($fgColor, $bgColor, $attrs);
 
                 print {$colordef->{'fh'}} "$lineOutPre$replacement$lineOutPost";
 
-                my $colorCombo = "$fgColorSem;$bgColorSem;$reverse";
+                my $colorCombo = joinSpecFields($fgColorSem, $bgColorSem, $attrRaw);
                 if ($colortype eq 'truecolor') {
                     my $bgColorForContrast = $bgColor || mapColor('bg', $colordef->{'colordefs'}, $themeMap);
                     $printToTerm{$variant}{$colorCombo}{'contrast'} = contrastRatioRGB($fgColor, $bgColorForContrast);
                 }
-                $printToTerm{$variant}{$colorCombo}{$colortype} = [ $fgColor, $bgColor, $reverse, $mcSetting ];
+                $printToTerm{$variant}{$colorCombo}{$colortype} = [ $fgColor, $bgColor, $isReverse, $mcSetting ];
             }
         }
     } elsif ($section eq 'skin' && $line =~ /^\s*description\s*=/)  {
@@ -499,7 +502,7 @@ sub mapSyntaxFiles {
                     my $fgColor = mapColor($fgColorSem, $colordef->{'colordefs'}, $themeMap);
                     my $bgColor = mapColor($bgColorSem, $colordef->{'colordefs'}, $themeMap);
 
-                    my $colorCombo = "$fgColorSem;$bgColorSem;$attr";
+                    my $colorCombo = joinSpecFields($fgColorSem, $bgColorSem, $attr);
 
                     my $lineChomp = $line;
                     chomp($lineChomp);
@@ -611,6 +614,20 @@ sub readFile {
     my @lines = <$FH>;
     close($FH);
     return @lines;
+}
+
+# Joins foreground/background/attribute fields into a single ";"-separated mc color-spec value, following the mc
+# skin format: trailing fields that are empty are omitted entirely, while an empty field followed by a non-empty
+# one is kept as a blank placeholder.
+# See misc/skins/README.txt in the mc source for the documented examples this mirrors (e.g. "marked = yellow" has
+# no trailing ";", while "selected = ;black" keeps the leading empty placeholder because bg follows it).
+sub joinSpecFields {
+    my ($fg, $bg, $attrs) = @_;
+
+    my @fields = ($fg, $bg, $attrs);
+    pop @fields while @fields && $fields[-1] eq '';
+
+    return join(';', @fields);
 }
 
 # Maps a semantic color as used in the skin (e.g., fg, bg) to a midnight commander color in the given color type (ansi,
